@@ -616,6 +616,59 @@
         color: var(--red);
       }
 
+      /* ── Controls / Pause ── */
+      .controls {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        margin-top: 2px;
+      }
+      .btn-pause {
+        font-family: "Caveat", cursive;
+        font-size: 1.15rem;
+        font-weight: 700;
+        padding: 4px 18px;
+        border: 2px solid var(--ink);
+        border-radius: 4px;
+        background: #fff;
+        color: var(--ink);
+        cursor: pointer;
+        box-shadow: 2px 2px 0 var(--ink);
+        transition: all 0.12s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        user-select: none;
+        touch-action: manipulation;
+        transform: rotate(-0.5deg);
+      }
+      .btn-pause:hover {
+        background: var(--yellow);
+        transform: rotate(0deg) translate(-1px, -1px);
+        box-shadow: 3px 3px 0 var(--ink);
+      }
+      .btn-pause:active {
+        transform: translate(1px, 1px);
+        box-shadow: 1px 1px 0 var(--ink);
+      }
+      .btn-pause.paused {
+        background: #ffeaa7;
+        border-color: var(--blue);
+        color: var(--blue);
+      }
+      .btn-pause:disabled {
+        opacity: 0.35;
+        cursor: not-allowed;
+        pointer-events: none;
+      }
+
+      /* pause overlay adjustments */
+      .pause-box {
+        animation: paperSlam 0.3s cubic-bezier(0.17, 0.67, 0.24, 1.4);
+      }
+
       /* ── Confetti ── */
       #confetti {
         position: fixed;
@@ -751,7 +804,23 @@
 
       <div class="board" id="board"></div>
 
+      <div class="controls">
+        <button class="btn-pause" id="btnPause" type="button" aria-label="Pause game">⏸️ pause</button>
+      </div>
+
       <div class="footer">doodled during class 📝</div>
+    </div>
+
+    <div class="overlay" id="pauseOverlay">
+      <div class="result-box pause-box" id="pauseBox">
+        <span class="emoji">☕</span>
+        <div class="result-title" style="color: var(--ink)">Game Paused</div>
+        <div class="result-sub">taking a quick breather...</div>
+        <div style="display: flex; flex-direction: column; gap: 8px; align-items: center; width: 100%;">
+          <button class="btn-replay" id="btnResume">resume ▶️</button>
+          <button class="btn-replay-secondary" id="btnRestart">restart 🔄</button>
+        </div>
+      </div>
     </div>
 
     <div class="overlay" id="overlay">
@@ -770,6 +839,8 @@
         let board = Array(9).fill("");
         let gameActive = true;
         let playerTurn = true;
+        let isPaused = false;
+        let botTimer = null;
         let scores = { you: 0, bot: 0, draw: 0 };
 
         const HUMAN = "O",
@@ -789,11 +860,15 @@
         const $ = (id) => document.getElementById(id);
         const boardEl = $("board"),
           statusEl = $("status"),
-          overlayEl = $("overlay");
+          overlayEl = $("overlay"),
+          pauseOverlay = $("pauseOverlay");
         const resultEmoji = $("resultEmoji"),
           resultTitle = $("resultTitle"),
           resultSub = $("resultSub");
-        const btnReplay = $("btnReplay");
+        const btnReplay = $("btnReplay"),
+          btnPause = $("btnPause"),
+          btnResume = $("btnResume"),
+          btnRestart = $("btnRestart");
         const gameWrapper = $("gameWrapper");
 
         function buildBoard() {
@@ -875,6 +950,11 @@
 
         function showResult(type) {
           gameActive = false;
+          if (botTimer) {
+            clearTimeout(botTimer);
+            botTimer = null;
+          }
+          btnPause.disabled = true;
           const messages = {
             win: {
               emojis: ["🎉", "✏️", "🏆", "💪", "🥳", "⭐", "✨", "👑"],
@@ -949,7 +1029,7 @@
         }
 
         function onCellClick(e) {
-          if (!gameActive || !playerTurn) return;
+          if (!gameActive || !playerTurn || isPaused) return;
           const index = parseInt(e.currentTarget.dataset.index);
           if (board[index] !== "") return;
 
@@ -971,11 +1051,12 @@
           playerTurn = false;
           statusEl.innerHTML =
             '<span class="thinking"><img src="logo.svg" class="techeniac-logo-spin" alt="TechEniac" /> TechEniac thinking...</span>';
-          setTimeout(botMove, 400 + Math.random() * 400);
+          botTimer = setTimeout(botMove, 400 + Math.random() * 400);
         }
 
         function botMove() {
-          if (!gameActive) return;
+          botTimer = null;
+          if (!gameActive || isPaused) return;
           const move = chooseBotMove();
           placeMark(move, BOT, null);
 
@@ -1145,11 +1226,58 @@
           }
         }
 
+        function pauseGame() {
+          if (!gameActive || isPaused) return;
+          isPaused = true;
+          if (botTimer) {
+            clearTimeout(botTimer);
+            botTimer = null;
+          }
+          btnPause.innerHTML = "▶️ resume";
+          btnPause.classList.add("paused");
+          pauseOverlay.classList.add("show");
+        }
+
+        function resumeGame() {
+          if (!isPaused) return;
+          isPaused = false;
+          btnPause.innerHTML = "⏸️ pause";
+          btnPause.classList.remove("paused");
+          pauseOverlay.classList.remove("show");
+
+          if (gameActive) {
+            if (!playerTurn) {
+              statusEl.innerHTML =
+                '<span class="thinking"><img src="logo.svg" class="techeniac-logo-spin" alt="TechEniac" /> TechEniac thinking...</span>';
+              botTimer = setTimeout(botMove, 400 + Math.random() * 300);
+            } else {
+              statusEl.textContent = "ur turn, go!";
+            }
+          }
+        }
+
+        function togglePause() {
+          if (isPaused) {
+            resumeGame();
+          } else {
+            pauseGame();
+          }
+        }
+
         function resetGame() {
           board = Array(9).fill("");
           gameActive = true;
           playerTurn = true;
+          isPaused = false;
+          if (botTimer) {
+            clearTimeout(botTimer);
+            botTimer = null;
+          }
           overlayEl.classList.remove("show");
+          pauseOverlay.classList.remove("show");
+          btnPause.disabled = false;
+          btnPause.innerHTML = "⏸️ pause";
+          btnPause.classList.remove("paused");
           confettiRunning = false;
           ctx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
           buildBoard();
@@ -1162,6 +1290,16 @@
         }
 
         btnReplay.addEventListener("click", resetGame);
+        btnPause.addEventListener("click", togglePause);
+        btnResume.addEventListener("click", resumeGame);
+        btnRestart.addEventListener("click", resetGame);
+        window.addEventListener("keydown", function (e) {
+          if (e.key === "Escape" || e.key === "p" || e.key === "P") {
+            if (gameActive && !overlayEl.classList.contains("show")) {
+              togglePause();
+            }
+          }
+        });
         window.addEventListener("resize", resizeConfetti);
 
         buildBoard();

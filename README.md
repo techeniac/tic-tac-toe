@@ -25,6 +25,7 @@ A stylish, hand-drawn notebook doodle-themed Tic Tac Toe game built with pure va
   - Responsive layout with viewport-relative units (`dvh`).
   - Fast-response touch tap targets (`touch-action: manipulation`) with zero 300ms delay.
   - Prevention of rubber-band scroll bounce on iOS/Android devices.
+- ⏸️ **Pause & Resume Controls**: Pause mid-game anytime via the on-screen button or keyboard shortcuts (`Esc` / `P`) with a dedicated doodle pause modal and restart option.
 - ⚡ **Offline-First PWA (Progressive Web App)**:
   - Cache-first service worker (`sw.js`) for instant offline loading.
   - Web App Manifest (`manifest.json`) for installing directly onto desktop or mobile home screens.
