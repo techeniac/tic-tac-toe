@@ -1,0 +1,16 @@
+{
+  "name": "Tic Tac Toe — Me vs The TechEniac",
+  "short_name": "Tic Tac Toe",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f5f0e8",
+  "theme_color": "#f5f0e8",
+  "icons": [
+    {
+      "src": "./logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

@@ -1,0 +1,1179 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, user-scalable=no"
+    />
+    <title>Tic Tac Toe</title>
+    <link rel="manifest" href="manifest.json" />
+    <link rel="icon" href="logo.svg" type="image/svg+xml" />
+    <meta name="theme-color" content="#f5f0e8" />
+    <link href="fonts/fonts.css" rel="stylesheet" />
+    <style>
+      @font-face {
+        font-family: "FallbackMarker";
+        src:
+          local("Permanent Marker"), local("Comic Sans MS"),
+          local("Marker Felt");
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      :root {
+        --paper: #f5f0e8;
+        --paper-dark: #e8e0d0;
+        --ink: #2c2c2c;
+        --ink-light: #666;
+        --red: #d63031;
+        --blue: #0984e3;
+        --yellow: #fdcb6e;
+        --green: #00b894;
+        --pink: #e84393;
+        --purple: #6c5ce7;
+        --doodle: #b2bec3;
+      }
+
+      html,
+      body {
+        height: 100%;
+        /* Use dvh on modern mobile browsers (excludes browser chrome bars) */
+        height: 100dvh;
+        overflow: hidden;
+      }
+
+      body {
+        font-family: "Caveat", "Comic Sans MS", cursive;
+        background: var(--paper);
+        background-image: repeating-linear-gradient(
+          0deg,
+          transparent,
+          transparent 27px,
+          #d4ccbc 27px,
+          #d4ccbc 28px
+        );
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--ink);
+        -webkit-tap-highlight-color: transparent;
+        user-select: none;
+        position: relative;
+        /* Prevent iOS Safari bounce scroll that shifts touch coords */
+        overscroll-behavior: none;
+        touch-action: none;
+      }
+
+      /* ── notebook margin line ── */
+      body::before {
+        content: "";
+        position: fixed;
+        top: 0;
+        bottom: 0;
+        left: 60px;
+        width: 2px;
+        background: #e88;
+        opacity: 0.4;
+        z-index: 0;
+      }
+
+      /* ── scattered doodles ── */
+      .doodle {
+        position: fixed;
+        font-size: 1.8rem;
+        opacity: 0.12;
+        z-index: 0;
+        pointer-events: none;
+        animation: doodleSpin 20s linear infinite;
+      }
+      .doodle:nth-child(1) {
+        top: 5%;
+        left: 8%;
+        animation-duration: 25s;
+      }
+      .doodle:nth-child(2) {
+        top: 12%;
+        right: 10%;
+        animation-duration: 30s;
+        animation-direction: reverse;
+        font-size: 2.2rem;
+      }
+      .doodle:nth-child(3) {
+        bottom: 15%;
+        left: 5%;
+        animation-duration: 35s;
+        font-size: 1.5rem;
+      }
+      .doodle:nth-child(4) {
+        bottom: 8%;
+        right: 7%;
+        animation-duration: 22s;
+        animation-direction: reverse;
+      }
+      .doodle:nth-child(5) {
+        top: 45%;
+        right: 3%;
+        animation-duration: 40s;
+        font-size: 2rem;
+      }
+      .doodle:nth-child(6) {
+        top: 70%;
+        left: 3%;
+        animation-duration: 28s;
+        animation-direction: reverse;
+        font-size: 1.3rem;
+      }
+
+      @keyframes doodleSpin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      /* ── sticker decorations ── */
+      .sticker {
+        position: fixed;
+        font-size: 2.5rem;
+        z-index: 0;
+        pointer-events: none;
+        filter: drop-shadow(2px 2px 1px rgba(0, 0, 0, 0.15));
+      }
+      .sticker:nth-child(7) {
+        top: 3%;
+        right: 15%;
+        transform: rotate(15deg);
+      }
+      .sticker:nth-child(8) {
+        bottom: 4%;
+        left: 12%;
+        transform: rotate(-10deg);
+      }
+      .sticker:nth-child(9) {
+        top: 50%;
+        left: 2%;
+        transform: rotate(25deg);
+        font-size: 2rem;
+      }
+
+      /* ── tape strips ── */
+      .tape {
+        position: absolute;
+        width: 80px;
+        height: 22px;
+        background: rgba(255, 235, 180, 0.7);
+        z-index: 5;
+        pointer-events: none;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      }
+      .tape-tl {
+        top: -10px;
+        left: 10px;
+        transform: rotate(-8deg);
+      }
+      .tape-tr {
+        top: -10px;
+        right: 10px;
+        transform: rotate(5deg);
+      }
+
+      /* ── Main Container ── */
+      .game-wrapper {
+        position: relative;
+        z-index: 1;
+        width: 100%;
+        max-width: 380px;
+        /* Scale padding down on small screens so the card always fits */
+        padding: clamp(12px, 4vw, 24px) clamp(10px, 3vw, 18px) clamp(10px, 3vw, 18px);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: clamp(6px, 1.5vw, 10px);
+        background: #fff;
+        border-radius: 4px;
+        box-shadow:
+          3px 3px 0 var(--paper-dark),
+          6px 6px 0 #d5cfc5,
+          0 8px 30px rgba(0, 0, 0, 0.12);
+        border: 1.5px solid #ccc;
+        /* Keep the tilt but only on screens tall enough that it won't overflow */
+        transform: rotate(-0.8deg);
+        justify-content: center;
+        /* Must NOT be taller than the viewport — touch coords rely on this */
+        max-height: 98dvh;
+        max-height: 98vh; /* fallback */
+        overflow: visible;
+      }
+
+      /* ── Title ── */
+      .header {
+        text-align: center;
+        position: relative;
+      }
+      .header h1 {
+        font-family: "Permanent Marker", "Rock Salt", "Comic Sans MS", cursive;
+        font-size: clamp(1.6rem, 7vw, 2.2rem);
+        color: var(--ink);
+        transform: rotate(-2deg);
+        position: relative;
+        display: inline-block;
+        line-height: 1.2;
+      }
+      .header h1::after {
+        content: "";
+        position: absolute;
+        bottom: 2px;
+        left: -4px;
+        right: -4px;
+        height: 10px;
+        background: var(--yellow);
+        opacity: 0.5;
+        z-index: -1;
+        transform: rotate(0.5deg) skewX(-3deg);
+        border-radius: 2px;
+      }
+      .header .subtitle {
+        font-size: 0.95rem;
+        color: var(--ink-light);
+        margin-top: 2px;
+        font-style: italic;
+      }
+      .header .arrow-doodle {
+        position: absolute;
+        top: -18px;
+        right: -35px;
+        font-size: 1.5rem;
+        transform: rotate(20deg);
+        opacity: 0.3;
+      }
+
+      /* ── Status ── */
+      .status {
+        font-family: "Caveat", cursive;
+        font-size: 1.35rem;
+        font-weight: 700;
+        min-height: 2em;
+        height: 2em;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--ink);
+        background: linear-gradient(
+          90deg,
+          transparent 30%,
+          rgba(253, 203, 110, 0.2) 50%,
+          transparent 70%
+        );
+        padding: 0 16px;
+        border-radius: 4px;
+        white-space: nowrap;
+        overflow: hidden;
+        flex-shrink: 0;
+      }
+      .status .thinking {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        animation: scribble 0.8s ease-in-out infinite;
+      }
+
+      .techeniac-logo-spin {
+        width: 22px;
+        height: 22px;
+        object-fit: contain;
+        background: transparent;
+        display: inline-block;
+        vertical-align: middle;
+        animation: logoPulse 1s ease-in-out infinite;
+        filter: drop-shadow(0 0 3px rgba(73, 100, 249, 0.5));
+      }
+
+      @keyframes logoPulse {
+        0%,
+        100% {
+          opacity: 1;
+          transform: scale(1);
+        }
+        50% {
+          opacity: 0.7;
+          transform: scale(1.15);
+        }
+      }
+      @keyframes scribble {
+        0%,
+        100% {
+          transform: translateX(0);
+        }
+        25% {
+          transform: translateX(-2px) rotate(-1deg);
+        }
+        75% {
+          transform: translateX(2px) rotate(1deg);
+        }
+      }
+
+      /* ── Board ── */
+      .board {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        grid-template-rows: repeat(3, 1fr);
+        gap: 0;
+        width: 100%;
+        /* Board shrinks on small phones so it always fits the wrapper */
+        max-width: min(320px, 85vw);
+        aspect-ratio: 1;
+        position: relative;
+        /* hand-drawn grid lines via borders */
+      }
+
+      /* Notebook-style hand-drawn grid */
+      .board::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        /* Vertical lines */
+        background:
+          linear-gradient(
+            90deg,
+            transparent calc(33.33% - 1.5px),
+            var(--ink) calc(33.33% - 1.5px),
+            var(--ink) calc(33.33% + 1.5px),
+            transparent calc(33.33% + 1.5px),
+            transparent calc(66.66% - 1.5px),
+            var(--ink) calc(66.66% - 1.5px),
+            var(--ink) calc(66.66% + 1.5px),
+            transparent calc(66.66% + 1.5px)
+          ),
+          linear-gradient(
+            0deg,
+            transparent calc(33.33% - 1.5px),
+            var(--ink) calc(33.33% - 1.5px),
+            var(--ink) calc(33.33% + 1.5px),
+            transparent calc(33.33% + 1.5px),
+            transparent calc(66.66% - 1.5px),
+            var(--ink) calc(66.66% - 1.5px),
+            var(--ink) calc(66.66% + 1.5px),
+            transparent calc(66.66% + 1.5px)
+          );
+        opacity: 0.35;
+        pointer-events: none;
+        z-index: 1;
+        /* Slight skew for hand-drawn feel */
+        transform: rotate(0.3deg);
+      }
+
+      .cell {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        position: relative;
+        z-index: 2;
+        transition: background 0.15s;
+        border-radius: 0;
+        /* Critical for mobile: lets tap fire immediately without 300ms delay
+           and prevents the page-level touch-action:none from blocking cell taps */
+        touch-action: manipulation;
+        /* Ensure the cell fills its grid area completely — no gaps for touch to miss */
+        width: 100%;
+        height: 100%;
+      }
+      .cell:hover:not(.taken) {
+        background: rgba(108, 92, 231, 0.06);
+      }
+      .cell:active:not(.taken) {
+        background: rgba(108, 92, 231, 0.12);
+      }
+      .cell.taken {
+        cursor: default;
+      }
+
+      /* X and O — hand-drawn style */
+      .cell .mark {
+        font-family: "Permanent Marker", "Rock Salt", "Comic Sans MS", cursive;
+        font-size: clamp(2.5rem, 13vw, 4.5rem);
+        font-weight: 700;
+        line-height: 1;
+        animation: slamDown 0.35s cubic-bezier(0.17, 0.67, 0.24, 1.4);
+        position: relative;
+      }
+      .cell .mark.x {
+        color: var(--red);
+        transform: rotate(-5deg);
+        text-shadow: 2px 2px 0 rgba(214, 48, 49, 0.15);
+      }
+      .cell .mark.o {
+        color: var(--blue);
+        transform: rotate(3deg);
+        text-shadow: 2px 2px 0 rgba(9, 132, 227, 0.15);
+      }
+      @keyframes slamDown {
+        0% {
+          opacity: 0;
+          transform: scale(2.5) rotate(20deg);
+        }
+        60% {
+          opacity: 1;
+          transform: scale(0.9) rotate(-3deg);
+        }
+        100% {
+          opacity: 1;
+          transform: scale(1) rotate(0);
+        }
+      }
+
+      /* Win cells — circled in "pen" */
+      .cell.win-cell {
+        animation: none;
+      }
+      .cell.win-cell::after {
+        content: "";
+        position: absolute;
+        inset: 6px;
+        border: 3px solid var(--green);
+        border-radius: 50%;
+        opacity: 0.7;
+        animation: circleIn 0.5s ease-out;
+        z-index: 3;
+        /* Make it look imperfect */
+        transform: rotate(5deg) scale(1.05, 0.95);
+      }
+      .cell.win-cell .mark {
+        color: var(--green) !important;
+        text-shadow: none !important;
+      }
+      @keyframes circleIn {
+        from {
+          transform: scale(0) rotate(-90deg);
+          opacity: 0;
+        }
+        to {
+          transform: rotate(5deg) scale(1.05, 0.95);
+          opacity: 0.7;
+        }
+      }
+
+      /* ── strikethrough line for win ── */
+      .strike-line {
+        position: absolute;
+        background: var(--red);
+        opacity: 0.55;
+        z-index: 10;
+        border-radius: 3px;
+        pointer-events: none;
+        transform-origin: left center;
+        /* clip-path grows the line without touching transform (rotation stays intact) */
+        animation: strikeGrow 0.4s ease-out forwards;
+      }
+      @keyframes strikeGrow {
+        from {
+          clip-path: inset(0 100% 0 0);
+        }
+        to {
+          clip-path: inset(0 0% 0 0);
+        }
+      }
+
+      /* ── Overlay ── */
+      .overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 100;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        background: rgba(245, 240, 232, 0.88);
+        backdrop-filter: blur(3px);
+      }
+      .overlay.show {
+        display: flex;
+      }
+
+      .result-box {
+        text-align: center;
+        padding: 32px 24px;
+        background: #fff;
+        border: 2.5px solid var(--ink);
+        border-radius: 3px;
+        animation: paperSlam 0.4s cubic-bezier(0.17, 0.67, 0.24, 1.4);
+        max-width: 300px;
+        width: 88%;
+        box-shadow:
+          4px 4px 0 var(--paper-dark),
+          8px 8px 0 #ccc;
+        position: relative;
+        transform: rotate(1.5deg);
+      }
+      /* tape on result card */
+      .result-box::before {
+        content: "";
+        position: absolute;
+        top: -12px;
+        left: 50%;
+        transform: translateX(-50%) rotate(-3deg);
+        width: 90px;
+        height: 22px;
+        background: rgba(255, 235, 180, 0.75);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+      }
+      @keyframes paperSlam {
+        from {
+          opacity: 0;
+          transform: rotate(-8deg) scale(0.4) translateY(-60px);
+        }
+        to {
+          opacity: 1;
+          transform: rotate(1.5deg) scale(1) translateY(0);
+        }
+      }
+
+      .result-box .emoji {
+        font-size: 3.2rem;
+        display: block;
+        margin-bottom: 8px;
+        animation: wobble 1.5s ease infinite;
+      }
+      @keyframes wobble {
+        0%,
+        100% {
+          transform: rotate(0);
+        }
+        15% {
+          transform: rotate(12deg);
+        }
+        30% {
+          transform: rotate(-10deg);
+        }
+        45% {
+          transform: rotate(6deg);
+        }
+        60% {
+          transform: rotate(-4deg);
+        }
+        75% {
+          transform: rotate(2deg);
+        }
+      }
+
+      .result-box .result-title {
+        font-family: "Permanent Marker", cursive;
+        font-size: 1.8rem;
+        margin-bottom: 4px;
+      }
+      .result-box .result-sub {
+        font-size: 1.1rem;
+        color: var(--ink-light);
+        margin-bottom: 20px;
+        font-style: italic;
+      }
+
+      .btn-replay {
+        padding: 10px 32px;
+        border: 2.5px solid var(--ink);
+        border-radius: 3px;
+        font-size: 1.1rem;
+        font-weight: 700;
+        cursor: pointer;
+        color: var(--ink);
+        background: var(--yellow);
+        box-shadow: 3px 3px 0 var(--ink);
+        transition: all 0.1s;
+        font-family: "Permanent Marker", cursive;
+        transform: rotate(-1deg);
+      }
+      .btn-replay:hover {
+        transform: rotate(0deg) translate(-1px, -1px);
+        box-shadow: 4px 4px 0 var(--ink);
+      }
+      .btn-replay:active {
+        transform: translate(2px, 2px);
+        box-shadow: 1px 1px 0 var(--ink);
+      }
+
+      .btn-replay-secondary {
+        display: block;
+        margin: 10px auto 0;
+        padding: 6px 18px;
+        border: 1.5px dashed var(--ink-light);
+        border-radius: 3px;
+        background: transparent;
+        color: var(--ink-light);
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+        font-family: "Caveat", cursive;
+        transition: all 0.15s;
+      }
+      .btn-replay-secondary:hover {
+        border-color: var(--red);
+        color: var(--red);
+      }
+
+      /* ── Confetti ── */
+      #confetti {
+        position: fixed;
+        inset: 0;
+        z-index: 99;
+        pointer-events: none;
+      }
+
+      /* ── Footer ── */
+      .footer {
+        font-size: 0.75rem;
+        color: var(--ink-light);
+        opacity: 0.4;
+        text-align: center;
+        font-style: italic;
+      }
+
+      /* ── Shake for lose ── */
+      @keyframes shake {
+        0%,
+        100% {
+          transform: translateX(0) rotate(-0.8deg);
+        }
+        20% {
+          transform: translateX(-8px) rotate(-2deg);
+        }
+        40% {
+          transform: translateX(8px) rotate(0.5deg);
+        }
+        60% {
+          transform: translateX(-5px) rotate(-1.5deg);
+        }
+        80% {
+          transform: translateX(5px) rotate(0deg);
+        }
+      }
+      .shake {
+        animation: shake 0.5s ease;
+      }
+
+      /* ── Crossed-out / scribble text decoration ── */
+      .crossed-out {
+        text-decoration: line-through;
+        text-decoration-color: var(--red);
+        text-decoration-thickness: 2.5px;
+        opacity: 0.5;
+      }
+
+      /* ── little arrow/note in corner ── */
+      .margin-note {
+        position: absolute;
+        top: 8px;
+        left: -55px;
+        font-size: 0.7rem;
+        color: var(--red);
+        opacity: 0.3;
+        transform: rotate(-90deg);
+        white-space: nowrap;
+        font-family: "Caveat", cursive;
+        pointer-events: none;
+      }
+
+      /* ── pen cursor ── */
+      .cell:not(.taken) {
+        cursor: crosshair;
+      }
+
+      /* ── ink splatter on click ── */
+      .ink-splat {
+        position: absolute;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        pointer-events: none;
+        z-index: 10;
+        animation: splatFade 0.5s ease-out forwards;
+      }
+      @keyframes splatFade {
+        0% {
+          opacity: 0.6;
+          transform: scale(1);
+        }
+        100% {
+          opacity: 0;
+          transform: scale(2.5);
+        }
+      }
+
+      /* ── Coffee stain ── */
+      .coffee-stain {
+        position: fixed;
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        border: 8px solid rgba(139, 90, 43, 0.06);
+        pointer-events: none;
+        z-index: 0;
+        transform: rotate(15deg);
+      }
+    </style>
+  </head>
+  <body>
+    <!-- scattered notebook doodles -->
+    <span class="doodle">✿</span>
+    <span class="doodle">★</span>
+    <span class="doodle">♪</span>
+    <span class="doodle">☁</span>
+    <span class="doodle">⚡</span>
+    <span class="doodle">✦</span>
+
+    <!-- stickers -->
+    <span class="sticker">⭐</span>
+    <span class="sticker">🤖</span>
+    <span class="sticker" style="font-size: 1.8rem">✌️</span>
+
+    <!-- coffee ring stain -->
+    <div class="coffee-stain" style="bottom: 10%; right: 8%"></div>
+
+    <canvas id="confetti"></canvas>
+
+    <div class="game-wrapper" id="gameWrapper">
+      <div class="tape tape-tl"></div>
+      <div class="tape tape-tr"></div>
+      <span class="margin-note">← my game</span>
+
+      <div class="header">
+        <h1>tic tac toe</h1>
+        <div class="subtitle">( Me vs The TechEniac )</div>
+        <span class="arrow-doodle">↗</span>
+      </div>
+
+      <div class="status" id="status">ur turn, go!</div>
+
+      <div class="board" id="board"></div>
+
+      <div class="footer">doodled during class 📝</div>
+    </div>
+
+    <div class="overlay" id="overlay">
+      <div class="result-box" id="resultBox">
+        <span class="emoji" id="resultEmoji">🎉</span>
+        <div class="result-title" id="resultTitle">You Won!</div>
+        <div class="result-sub" id="resultSub">lol get wrecked bot</div>
+        <button class="btn-replay" id="btnReplay">again!! ✏️</button>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        "use strict";
+
+        let board = Array(9).fill("");
+        let gameActive = true;
+        let playerTurn = true;
+        let scores = { you: 0, bot: 0, draw: 0 };
+
+        const HUMAN = "O",
+          BOT = "X";
+
+        const winCombos = [
+          [0, 1, 2],
+          [3, 4, 5],
+          [6, 7, 8],
+          [0, 3, 6],
+          [1, 4, 7],
+          [2, 5, 8],
+          [0, 4, 8],
+          [2, 4, 6],
+        ];
+
+        const $ = (id) => document.getElementById(id);
+        const boardEl = $("board"),
+          statusEl = $("status"),
+          overlayEl = $("overlay");
+        const resultEmoji = $("resultEmoji"),
+          resultTitle = $("resultTitle"),
+          resultSub = $("resultSub");
+        const btnReplay = $("btnReplay");
+        const gameWrapper = $("gameWrapper");
+
+        function buildBoard() {
+          boardEl.innerHTML = "";
+          for (let i = 0; i < 9; i++) {
+            const cell = document.createElement("div");
+            cell.className = "cell";
+            cell.dataset.index = i;
+            cell.addEventListener("click", onCellClick);
+            boardEl.appendChild(cell);
+          }
+        }
+
+        function inkSplatter(cell, color) {
+          for (let i = 0; i < 5; i++) {
+            const splat = document.createElement("div");
+            splat.className = "ink-splat";
+            splat.style.background = color;
+            splat.style.left = 20 + Math.random() * 60 + "%";
+            splat.style.top = 20 + Math.random() * 60 + "%";
+            splat.style.width = 3 + Math.random() * 6 + "px";
+            splat.style.height = splat.style.width;
+            cell.appendChild(splat);
+            setTimeout(() => splat.remove(), 500);
+          }
+        }
+
+        function placeMark(index, mark, e) {
+          board[index] = mark;
+          const cell = boardEl.children[index];
+          cell.classList.add("taken");
+          const color = mark === HUMAN ? "#0984e3" : "#d63031";
+          inkSplatter(cell, color + "44");
+          const span = document.createElement("span");
+          span.className = "mark " + mark.toLowerCase();
+          span.textContent = mark;
+          cell.appendChild(span);
+        }
+
+        function checkWin(mark) {
+          for (const combo of winCombos) {
+            if (combo.every((i) => board[i] === mark)) return combo;
+          }
+          return null;
+        }
+
+        function isDraw() {
+          return board.every((c) => c !== "");
+        }
+
+        function highlightWin(combo) {
+          combo.forEach((i) => boardEl.children[i].classList.add("win-cell"));
+          drawStrikeLine(combo);
+        }
+
+        function drawStrikeLine(combo) {
+          const cells = combo.map((i) => boardEl.children[i]);
+          const boardRect = boardEl.getBoundingClientRect();
+          const r0 = cells[0].getBoundingClientRect();
+          const r2 = cells[2].getBoundingClientRect();
+
+          const x1 = r0.left + r0.width / 2 - boardRect.left;
+          const y1 = r0.top + r0.height / 2 - boardRect.top;
+          const x2 = r2.left + r2.width / 2 - boardRect.left;
+          const y2 = r2.top + r2.height / 2 - boardRect.top;
+
+          const length = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+          const angle = (Math.atan2(y2 - y1, x2 - x1) * 180) / Math.PI;
+
+          const line = document.createElement("div");
+          line.className = "strike-line";
+          line.style.width = length + "px";
+          line.style.height = "3.5px";
+          line.style.left = x1 + "px";
+          line.style.top = y1 + "px";
+          line.style.transform = `rotate(${angle}deg)`;
+          boardEl.appendChild(line);
+        }
+
+        function showResult(type) {
+          gameActive = false;
+          const messages = {
+            win: {
+              emojis: ["🎉", "✏️", "🏆", "💪", "🥳", "⭐", "✨", "👑"],
+              titles: [
+                "u won!!",
+                "VICTORY",
+                "yesss!",
+                "haha ez",
+                "champion!",
+                "gottem!",
+              ],
+              subs: [
+                "bot is so bad lol",
+                "big brain moment 🧠",
+                "too ez tbh",
+                "destroyed 💀",
+                "gg no re",
+              ],
+            },
+            lose: {
+              emojis: ["💀", "😤", "😵", "🫠", "📉"],
+              titles: ["bot wins...", "bruh", "ugh", "nooo", "defeated"],
+              subs: [
+                "rigged honestly",
+                "ok that was unfair",
+                "rematch NOW",
+                "the bot cheated fr",
+                "almost had it smh",
+              ],
+            },
+            draw: {
+              emojis: ["🤝", "😐", "⚖️", "🫡", "😶"],
+              titles: ["draw", "tie...", "stalemate", "meh", "bruh tie"],
+              subs: [
+                "boring game tbh",
+                "we both suck lol",
+                "neither of us won",
+                "perfectly balanced ig",
+                "yawn",
+              ],
+            },
+          };
+
+          const m = messages[type];
+          const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+          const statusMsgs = {
+            win: ["🎉 u won!!", "yesss! ✨", "lets gooo!"],
+            lose: ["💀 bot got u", "nooo...", "bruh moment"],
+            draw: ["🤝 its a tie", "meh, draw", "nobody wins lol"],
+          };
+          statusEl.textContent = pick(statusMsgs[type]);
+
+          setTimeout(() => {
+            resultEmoji.textContent = pick(m.emojis);
+            resultTitle.textContent = pick(m.titles);
+            resultTitle.style.color =
+              type === "win"
+                ? "#00b894"
+                : type === "lose"
+                  ? "#d63031"
+                  : "#0984e3";
+            resultSub.textContent = pick(m.subs);
+            overlayEl.classList.add("show");
+            if (type === "win") {
+              launchConfetti();
+            } else if (type === "lose") {
+              gameWrapper.classList.add("shake");
+              setTimeout(() => gameWrapper.classList.remove("shake"), 500);
+            }
+          }, 600);
+        }
+
+        function onCellClick(e) {
+          if (!gameActive || !playerTurn) return;
+          const index = parseInt(e.currentTarget.dataset.index);
+          if (board[index] !== "") return;
+
+          placeMark(index, HUMAN, e);
+
+          const winCombo = checkWin(HUMAN);
+          if (winCombo) {
+            highlightWin(winCombo);
+            scores.you++;
+            showResult("win");
+            return;
+          }
+          if (isDraw()) {
+            scores.draw++;
+            showResult("draw");
+            return;
+          }
+
+          playerTurn = false;
+          statusEl.innerHTML =
+            '<span class="thinking"><img src="logo.svg" class="techeniac-logo-spin" alt="TechEniac" /> TechEniac thinking...</span>';
+          setTimeout(botMove, 400 + Math.random() * 400);
+        }
+
+        function botMove() {
+          if (!gameActive) return;
+          const move = chooseBotMove();
+          placeMark(move, BOT, null);
+
+          const winCombo = checkWin(BOT);
+          if (winCombo) {
+            highlightWin(winCombo);
+            scores.bot++;
+            showResult("lose");
+            return;
+          }
+          if (isDraw()) {
+            scores.draw++;
+            showResult("draw");
+            return;
+          }
+
+          playerTurn = true;
+          statusEl.textContent = "ur turn, go!";
+        }
+
+        function chooseBotMove() {
+          const empties = board
+            .map((v, i) => (v === "" ? i : -1))
+            .filter((v) => v !== -1);
+
+          // Always take immediate win
+          for (const i of empties) {
+            board[i] = BOT;
+            if (checkWin(BOT)) {
+              board[i] = "";
+              return i;
+            }
+            board[i] = "";
+          }
+          // Always block immediate loss
+          for (const i of empties) {
+            board[i] = HUMAN;
+            if (checkWin(HUMAN)) {
+              board[i] = "";
+              return i;
+            }
+            board[i] = "";
+          }
+
+          // ~40% chance to play random (makes the bot beatable)
+          if (Math.random() < 0.4) {
+            return empties[Math.floor(Math.random() * empties.length)];
+          }
+
+          // Minimax
+          let bestScore = -Infinity,
+            bestMove = empties[0];
+          for (const i of empties) {
+            board[i] = BOT;
+            const s = minimax(board, 0, false, -Infinity, Infinity);
+            board[i] = "";
+            if (s > bestScore) {
+              bestScore = s;
+              bestMove = i;
+            }
+          }
+          return bestMove;
+        }
+
+        function minimax(b, depth, isMax, alpha, beta) {
+          if (checkWin(BOT)) return 10 - depth;
+          if (checkWin(HUMAN)) return depth - 10;
+          if (b.every((c) => c !== "")) return 0;
+          if (isMax) {
+            let best = -Infinity;
+            for (let i = 0; i < 9; i++) {
+              if (b[i] !== "") continue;
+              b[i] = BOT;
+              best = Math.max(best, minimax(b, depth + 1, false, alpha, beta));
+              b[i] = "";
+              alpha = Math.max(alpha, best);
+              if (beta <= alpha) break;
+            }
+            return best;
+          } else {
+            let best = Infinity;
+            for (let i = 0; i < 9; i++) {
+              if (b[i] !== "") continue;
+              b[i] = HUMAN;
+              best = Math.min(best, minimax(b, depth + 1, true, alpha, beta));
+              b[i] = "";
+              beta = Math.min(beta, best);
+              if (beta <= alpha) break;
+            }
+            return best;
+          }
+        }
+
+        // ── Confetti (paper scraps style) ──
+        const confettiCanvas = $("confetti");
+        const ctx = confettiCanvas.getContext("2d");
+        let confettiPieces = [],
+          confettiRunning = false;
+
+        function resizeConfetti() {
+          confettiCanvas.width = window.innerWidth;
+          confettiCanvas.height = window.innerHeight;
+        }
+
+        function launchConfetti() {
+          resizeConfetti();
+          confettiPieces = [];
+          const colors = [
+            "#d63031",
+            "#fdcb6e",
+            "#6c5ce7",
+            "#00b894",
+            "#e84393",
+            "#0984e3",
+            "#fab1a0",
+            "#55efc4",
+          ];
+          for (let i = 0; i < 100; i++) {
+            confettiPieces.push({
+              x: Math.random() * confettiCanvas.width,
+              y: -20 - Math.random() * 300,
+              w: 4 + Math.random() * 8,
+              h: 3 + Math.random() * 6,
+              color: colors[Math.floor(Math.random() * colors.length)],
+              vx: (Math.random() - 0.5) * 4,
+              vy: 2 + Math.random() * 3,
+              rot: Math.random() * 360,
+              rotSpeed: (Math.random() - 0.5) * 12,
+              gravity: 0.06 + Math.random() * 0.04,
+              opacity: 1,
+              shape: Math.random() > 0.4 ? "rect" : "circle",
+            });
+          }
+          confettiRunning = true;
+          animateConfetti();
+        }
+
+        function animateConfetti() {
+          if (!confettiRunning) return;
+          ctx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+          let alive = 0;
+          for (const p of confettiPieces) {
+            p.vy += p.gravity;
+            p.x += p.vx;
+            p.y += p.vy;
+            p.rot += p.rotSpeed;
+            if (p.y > confettiCanvas.height + 20) p.opacity -= 0.02;
+            if (p.opacity <= 0) continue;
+            alive++;
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate((p.rot * Math.PI) / 180);
+            ctx.globalAlpha = p.opacity;
+            ctx.fillStyle = p.color;
+            if (p.shape === "rect") ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+            else {
+              ctx.beginPath();
+              ctx.arc(0, 0, p.w / 2, 0, Math.PI * 2);
+              ctx.fill();
+            }
+            ctx.restore();
+          }
+          if (alive > 0) requestAnimationFrame(animateConfetti);
+          else {
+            confettiRunning = false;
+            ctx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+          }
+        }
+
+        function resetGame() {
+          board = Array(9).fill("");
+          gameActive = true;
+          playerTurn = true;
+          overlayEl.classList.remove("show");
+          confettiRunning = false;
+          ctx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+          buildBoard();
+          statusEl.textContent = "ur turn, go!";
+        }
+
+        function resetScores() {
+          scores = { you: 0, bot: 0, draw: 0 };
+          resetGame();
+        }
+
+        btnReplay.addEventListener("click", resetGame);
+        window.addEventListener("resize", resizeConfetti);
+
+        buildBoard();
+        resizeConfetti();
+      })();
+    </script>
+    <script>
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", function () {
+          navigator.serviceWorker.register("./sw.js").catch(function () {});
+        });
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+
+# Local Editor / IDE settings
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Operating System files
+.DS_Store
+Thumbs.db
+
+# Vercel build & configuration cache
+.vercel/
+
+# Runtime / tool artifacts
+.gravitas/
+
+# Backup & duplicate files
+* 1.html
+* 1.*
+*.bak
